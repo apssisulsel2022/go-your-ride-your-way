@@ -25,7 +25,13 @@ export default function RideTracking() {
       <div className="min-h-screen bg-background">
         {/* Real map */}
         <div className="h-[55vh] relative">
-          <MapView useGeolocation animateMarker={!isComplete} />
+          <MapView
+            useGeolocation
+            animateMarker={!isComplete}
+            showRoute
+            pickupPosition={[-6.2088, 106.8456]}
+            destinationPosition={[-6.1751, 106.8650]}
+          />
           <div className="absolute top-4 left-4 z-[1000]">
             <button onClick={() => navigate("/")} className="p-2 rounded-xl bg-card border border-border shadow-sm">
               <ArrowLeft className="h-5 w-5" />
