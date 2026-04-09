@@ -1,6 +1,8 @@
-import { Navigation, Car, Bike, Truck, ChevronRight, Star, Clock } from "lucide-react";
+import { Navigation, Car, Bike, Truck, Bus, ChevronRight, Star, Clock } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { MapView } from "@/components/MapView";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 
 const vehicleTypes = [
@@ -21,9 +23,9 @@ export default function Index() {
   return (
     <MobileLayout>
       <div className="relative">
-        {/* Real map */}
-        <div className="h-[45vh] relative overflow-hidden">
-          <MapView useGeolocation />
+        {/* Map header */}
+        <div className="h-[38vh] relative overflow-hidden">
+          <MapView useGeolocation showLocateButton />
           <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-[1000]">
             <div className="bg-card rounded-2xl px-4 py-2 shadow-lg">
               <span className="text-lg font-extrabold text-primary">PYU</span>
@@ -36,6 +38,7 @@ export default function Index() {
         <div className="relative -mt-6 rounded-t-3xl bg-background px-4 pt-5 pb-4 space-y-5 z-10">
           <div className="w-10 h-1 rounded-full bg-border mx-auto" />
 
+          {/* Search bar */}
           <button
             onClick={() => navigate("/ride/book")}
             className="w-full flex items-center gap-3 bg-card rounded-2xl p-4 shadow-sm border border-border hover:border-primary/30 transition-colors"
@@ -49,6 +52,34 @@ export default function Index() {
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
 
+          {/* Two main entry cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <Card
+              className="p-4 rounded-2xl cursor-pointer hover:border-primary/30 transition-colors"
+              onClick={() => navigate("/ride/book")}
+            >
+              <div className="p-3 bg-primary/10 rounded-xl w-fit mb-3">
+                <Car className="h-7 w-7 text-primary" />
+              </div>
+              <h3 className="font-extrabold text-sm">Ride Now</h3>
+              <p className="text-xs text-muted-foreground mt-1">On-demand rides nearby</p>
+            </Card>
+            <Card
+              className="p-4 rounded-2xl cursor-pointer hover:border-accent/30 transition-colors relative"
+              onClick={() => navigate("/shuttle")}
+            >
+              <Badge variant="secondary" className="absolute top-3 right-3 text-[9px] font-bold">
+                Guest OK
+              </Badge>
+              <div className="p-3 bg-accent/10 rounded-xl w-fit mb-3">
+                <Bus className="h-7 w-7 text-accent" />
+              </div>
+              <h3 className="font-extrabold text-sm">Shuttle</h3>
+              <p className="text-xs text-muted-foreground mt-1">Intercity trips</p>
+            </Card>
+          </div>
+
+          {/* Vehicle quick-select */}
           <div className="grid grid-cols-4 gap-2">
             {vehicleTypes.map((v) => (
               <button
@@ -63,6 +94,7 @@ export default function Index() {
             ))}
           </div>
 
+          {/* Recent places */}
           <div>
             <h3 className="text-sm font-bold mb-2">Recent Places</h3>
             <div className="space-y-1">

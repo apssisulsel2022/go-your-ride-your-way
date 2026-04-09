@@ -1,8 +1,9 @@
-import { User, Bell, CreditCard, Shield, HelpCircle, LogOut, ChevronRight, Star } from "lucide-react";
+import { User, Bell, CreditCard, Shield, HelpCircle, LogOut, ChevronRight, Star, Sun, Moon } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useTheme } from "@/hooks/use-theme";
 
 const menuItems = [
   { icon: CreditCard, label: "Payment Methods", desc: "Manage cards & wallets" },
@@ -13,6 +14,8 @@ const menuItems = [
 ];
 
 export default function Profile() {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <MobileLayout>
       <div className="px-4 pt-6 space-y-5">
@@ -47,6 +50,25 @@ export default function Profile() {
             </Card>
           ))}
         </div>
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 p-3.5 rounded-xl hover:bg-secondary/60 transition-colors"
+        >
+          <div className="p-2 rounded-lg bg-secondary">
+            {theme === "light" ? (
+              <Moon className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Sun className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold">{theme === "light" ? "Dark Mode" : "Light Mode"}</p>
+            <p className="text-xs text-muted-foreground">Switch appearance</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
 
         {/* Menu */}
         <div className="space-y-1">
