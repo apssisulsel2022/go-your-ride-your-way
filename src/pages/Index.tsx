@@ -23,7 +23,7 @@ export default function Index() {
       <div className="relative">
         {/* Real map */}
         <div className="h-[45vh] relative overflow-hidden">
-          <MapView />
+          <MapView useGeolocation />
           <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-[1000]">
             <div className="bg-card rounded-2xl px-4 py-2 shadow-lg">
               <span className="text-lg font-extrabold text-primary">PYU</span>
