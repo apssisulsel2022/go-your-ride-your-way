@@ -624,7 +624,7 @@ export default function Shuttle() {
                 <p className="text-xs text-muted-foreground">Show this e-ticket to the driver</p>
               </motion.div>
 
-              <Card className="p-5 rounded-2xl space-y-4">
+              <Card ref={ticketRef} className="p-5 rounded-2xl space-y-4">
                 {/* Ticket header */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">E-TICKET</span>
@@ -682,6 +682,15 @@ export default function Shuttle() {
                   </div>
                 </div>
               </Card>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={downloadTicket} variant="outline" className="h-11 rounded-2xl font-bold">
+                  <Download className="h-4 w-4 mr-1.5" /> Download
+                </Button>
+                <Button onClick={shareTicket} variant="outline" className="h-11 rounded-2xl font-bold">
+                  <Share2 className="h-4 w-4 mr-1.5" /> Share
+                </Button>
+              </div>
 
               <Button onClick={resetBooking} variant="outline" className="w-full h-11 rounded-2xl font-bold">
                 Book Another Shuttle
