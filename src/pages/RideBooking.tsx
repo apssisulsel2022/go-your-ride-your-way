@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, MapPin, Navigation, Clock, Car, Bike, Truck, CreditCard, Wallet, ChevronRight } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { ArrowLeft, MapPin, Navigation, Clock, Car, Bike, Truck, CreditCard, Wallet, Crosshair } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,55 +7,142 @@ import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { MapView } from "@/components/MapView";
+import { RideBottomSheet } from "@/components/ride/RideBottomSheet";
+import { useRide } from "@/context/RideContext";
 
 const vehicles = [
-  { id: "bike", icon: Bike, label: "PYU Bike", eta: "3 min", price: "Rp 8,000", desc: "Affordable motorcycle ride" },
-  { id: "car", icon: Car, label: "PYU Car", eta: "5 min", price: "Rp 25,000", desc: "Comfortable car ride" },
-  { id: "premium", icon: Car, label: "PYU Premium", eta: "7 min", price: "Rp 45,000", desc: "Luxury experience" },
-  { id: "truck", icon: Truck, label: "PYU Truck", eta: "12 min", price: "Rp 60,000", desc: "Large cargo delivery" },
+  { id: "bike" as const, icon: Bike, label: "PYU Bike", eta: "3 min", price: "Rp 8,000", desc: "Affordable motorcycle ride" },
+  { id: "car" as const, icon: Car, label: "PYU Car", eta: "5 min", price: "Rp 25,000", desc: "Comfortable car ride" },
+  { id: "premium" as const, icon: Car, label: "PYU Premium", eta: "7 min", price: "Rp 45,000", desc: "Luxury experience" },
+  { id: "truck" as const, icon: Truck, label: "PYU Truck", eta: "12 min", price: "Rp 60,000", desc: "Large cargo delivery" },
 ];
 
-const paymentMethods = [
-  { id: "cash", icon: Wallet, label: "Cash" },
-  { id: "card", icon: CreditCard, label: "Card •••• 4242" },
+const suggestions = [
+  { name: "Grand Indonesia Mall", addr: "Jl. MH Thamrin No. 1", latlng: [-6.1950, 106.8220] as [number, number] },
+  { name: "Monas", addr: "Gambir, Central Jakarta", latlng: [-6.1754, 106.8272] as [number, number] },
+  { name: "Blok M Plaza", addr: "Jl. Sultan Hasanuddin", latlng: [-6.2443, 106.7981] as [number, number] },
 ];
+
+type Step = "location" | "fare" | "confirm";
 
 export default function RideBooking() {
   const navigate = useNavigate();
-  const [pickup, setPickup] = useState("");
-  const [destination, setDestination] = useState("");
-  const [selectedVehicle, setSelectedVehicle] = useState("car");
-  const [step, setStep] = useState<"location" | "vehicle">("location");
-  const [payment, setPayment] = useState("cash");
+  const { ride, setRide } = useRide();
 
-  const handleConfirmLocation = () => {
-    if (pickup && destination) setStep("vehicle");
+  const [pickupName, setPickupName] = useState(ride.pickup.name);
+  const [destName, setDestName] = useState(ride.destination.name);
+  const [pickupPos, setPickupPos] = useState<[number, number] | null>(ride.pickup.latlng);
+  const [destPos, setDestPos] = useState<[number, number] | null>(ride.destination.latlng);
+  const [selectedVehicle, setSelectedVehicle] = useState(ride.vehicle);
+  const [payment, setPayment] = useState(ride.payment);
+  const [step, setStep] = useState<Step>("location");
+  const [pickingField, setPickingField] = useState<"pickup" | "destination">("pickup");
+
+  const nearbyDrivers = useMemo<[number, number][]>(() => {
+    const base = pickupPos || [-6.2088, 106.8456];
+    return Array.from({ length: 5 }, () => [
+      base[0] + (Math.random() - 0.5) * 0.02,
+      base[1] + (Math.random() - 0.5) * 0.02,
+    ] as [number, number]);
+  }, [pickupPos]);
+
+  const handleMapClick = useCallback((latlng: [number, number]) => {
+    if (pickingField === "pickup") {
+      setPickupPos(latlng);
+      setPickupName(`${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`);
+    } else {
+      setDestPos(latlng);
+      setDestName(`${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`);
+    }
+  }, [pickingField]);
+
+  const handleSuggestion = (s: typeof suggestions[0]) => {
+    if (pickingField === "pickup" || (!pickupPos && !destPos)) {
+      setPickupName(s.name);
+      setPickupPos(s.latlng);
+      setPickingField("destination");
+    } else {
+      setDestName(s.name);
+      setDestPos(s.latlng);
+    }
   };
 
+  const handleUseMyLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const latlng: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setPickupName("My Location");
+        setPickupPos(latlng);
+        setPickingField("destination");
+      });
+    }
+  };
+
+  const canProceedToFare = pickupPos && destPos;
+
+  const handleConfirmLocation = () => {
+    if (canProceedToFare) setStep("fare");
+  };
+
+  const handleSelectVehicle = () => setStep("confirm");
+
   const handleBook = () => {
+    setRide({
+      pickup: { name: pickupName, latlng: pickupPos },
+      destination: { name: destName, latlng: destPos },
+      vehicle: selectedVehicle,
+      payment,
+      fare: vehicles.find((v) => v.id === selectedVehicle)?.price || "Rp 25,000",
+      status: "searching",
+    });
     navigate("/ride/tracking");
   };
 
+  const goBack = () => {
+    if (step === "confirm") setStep("fare");
+    else if (step === "fare") setStep("location");
+    else navigate(-1);
+  };
+
+  const selectedV = vehicles.find((v) => v.id === selectedVehicle)!;
+
   return (
     <MobileLayout hideNav>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="flex items-center gap-3 p-4">
-          <button onClick={() => step === "vehicle" ? setStep("location") : navigate(-1)} className="p-2 rounded-xl bg-card border border-border">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-lg font-bold">{step === "location" ? "Set Location" : "Choose Ride"}</h1>
+      <div className="min-h-screen bg-background relative">
+        {/* Full-screen map */}
+        <div className="h-screen w-full">
+          <MapView
+            useGeolocation={step === "location" && !pickupPos}
+            interactive={step === "location"}
+            onMapClick={handleMapClick}
+            pickupPosition={pickupPos || undefined}
+            destinationPosition={destPos || undefined}
+            showRoute={!!pickupPos && !!destPos}
+            nearbyDrivers={nearbyDrivers}
+            showLocateButton={false}
+          />
         </div>
 
-        <AnimatePresence mode="wait">
-          {step === "location" ? (
-            <motion.div
-              key="location"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="px-4 space-y-4"
-            >
+        {/* Top bar */}
+        <div className="absolute top-4 left-4 z-[1000]">
+          <button onClick={goBack} className="p-2 rounded-xl bg-card border border-border shadow-sm">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        </div>
+
+        {step === "location" && (
+          <div className="absolute top-4 right-4 z-[1000]">
+            <div className="bg-card rounded-xl px-3 py-1.5 shadow-sm border border-border text-xs font-semibold text-muted-foreground">
+              Tap map to set {pickingField}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom sheet */}
+        <RideBottomSheet animationKey={step}>
+          {step === "location" && (
+            <div className="space-y-4">
               {/* Location inputs */}
               <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
                 <div className="flex items-center gap-3">
@@ -67,35 +154,37 @@ export default function RideBooking() {
                   <div className="flex-1 space-y-3">
                     <Input
                       placeholder="Pickup location"
-                      value={pickup}
-                      onChange={(e) => setPickup(e.target.value)}
-                      className="border-0 bg-secondary/50 rounded-xl h-11"
+                      value={pickupName}
+                      onFocus={() => setPickingField("pickup")}
+                      onChange={(e) => setPickupName(e.target.value)}
+                      className={cn("border-0 bg-secondary/50 rounded-xl h-11", pickingField === "pickup" && "ring-2 ring-primary")}
                     />
                     <Input
                       placeholder="Where to?"
-                      value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      className="border-0 bg-secondary/50 rounded-xl h-11"
+                      value={destName}
+                      onFocus={() => setPickingField("destination")}
+                      onChange={(e) => setDestName(e.target.value)}
+                      className={cn("border-0 bg-secondary/50 rounded-xl h-11", pickingField === "destination" && "ring-2 ring-accent")}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Suggested */}
+              <button
+                onClick={handleUseMyLocation}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
+              >
+                <Crosshair className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">Use my location</span>
+              </button>
+
               <div>
-                <h3 className="text-sm font-bold mb-2 text-muted-foreground">Suggestions</h3>
-                {[
-                  { name: "Grand Indonesia Mall", addr: "Jl. MH Thamrin No. 1" },
-                  { name: "Monas", addr: "Gambir, Central Jakarta" },
-                  { name: "Blok M Plaza", addr: "Jl. Sultan Hasanuddin, Kebayoran Baru" },
-                ].map((s) => (
+                <p className="text-xs font-bold text-muted-foreground mb-2">SUGGESTIONS</p>
+                {suggestions.map((s) => (
                   <button
                     key={s.name}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/60 transition-colors"
-                    onClick={() => {
-                      if (!pickup) setPickup(s.name);
-                      else setDestination(s.name);
-                    }}
+                    onClick={() => handleSuggestion(s)}
                   >
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <div className="text-left">
@@ -108,20 +197,16 @@ export default function RideBooking() {
 
               <Button
                 onClick={handleConfirmLocation}
-                disabled={!pickup || !destination}
+                disabled={!canProceedToFare}
                 className="w-full h-12 rounded-2xl text-base font-bold"
               >
                 Confirm Location
               </Button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="vehicle"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="px-4 space-y-4"
-            >
+            </div>
+          )}
+
+          {step === "fare" && (
+            <div className="space-y-4">
               {/* Route summary */}
               <Card className="p-4 rounded-2xl border-primary/20">
                 <div className="flex items-center gap-3 text-sm">
@@ -131,14 +216,18 @@ export default function RideBooking() {
                     <div className="w-2.5 h-2.5 bg-accent rounded-sm" />
                   </div>
                   <div className="flex-1 space-y-2">
-                    <p className="font-semibold truncate">{pickup}</p>
-                    <p className="font-semibold truncate">{destination}</p>
+                    <p className="font-semibold truncate">{pickupName}</p>
+                    <p className="font-semibold truncate">{destName}</p>
                   </div>
+                </div>
+                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Navigation className="h-3 w-3" /> ~5.2 km</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> ~15 min</span>
                 </div>
               </Card>
 
               {/* Vehicles */}
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[35vh] overflow-y-auto">
                 {vehicles.map((v) => (
                   <button
                     key={v.id}
@@ -150,10 +239,7 @@ export default function RideBooking() {
                         : "border-border bg-card hover:border-primary/20"
                     )}
                   >
-                    <div className={cn(
-                      "p-2.5 rounded-xl",
-                      selectedVehicle === v.id ? "bg-primary/10" : "bg-secondary"
-                    )}>
+                    <div className={cn("p-2.5 rounded-xl", selectedVehicle === v.id ? "bg-primary/10" : "bg-secondary")}>
                       <v.icon className="h-6 w-6" />
                     </div>
                     <div className="flex-1 text-left">
@@ -170,15 +256,52 @@ export default function RideBooking() {
                 ))}
               </div>
 
+              <Button onClick={handleSelectVehicle} className="w-full h-12 rounded-2xl text-base font-bold">
+                Continue
+              </Button>
+            </div>
+          )}
+
+          {step === "confirm" && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-lg font-bold">Confirm your ride</p>
+                <p className="text-sm text-muted-foreground">Review details before booking</p>
+              </div>
+
+              <Card className="p-4 rounded-2xl space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className={cn("p-2.5 rounded-xl bg-primary/10")}>
+                    <selectedV.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold">{selectedV.label}</p>
+                    <p className="text-xs text-muted-foreground">{selectedV.eta} away</p>
+                  </div>
+                  <p className="text-lg font-bold text-primary">{selectedV.price}</p>
+                </div>
+
+                <div className="border-t border-border pt-3 space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2.5 h-2.5 bg-primary rounded-full mt-1.5 shrink-0" />
+                    <p className="truncate">{pickupName}</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2.5 h-2.5 bg-accent rounded-sm mt-1.5 shrink-0" />
+                    <p className="truncate">{destName}</p>
+                  </div>
+                </div>
+              </Card>
+
               {/* Payment */}
               <div className="flex items-center gap-3 p-3 bg-card rounded-2xl border border-border">
-                {paymentMethods.find(p => p.id === payment)?.id === "cash" ? (
+                {payment === "cash" ? (
                   <Wallet className="h-5 w-5 text-primary" />
                 ) : (
                   <CreditCard className="h-5 w-5 text-primary" />
                 )}
                 <span className="flex-1 text-sm font-semibold">
-                  {paymentMethods.find(p => p.id === payment)?.label}
+                  {payment === "cash" ? "Cash" : "Card •••• 4242"}
                 </span>
                 <button
                   onClick={() => setPayment(payment === "cash" ? "card" : "cash")}
@@ -189,11 +312,11 @@ export default function RideBooking() {
               </div>
 
               <Button onClick={handleBook} className="w-full h-12 rounded-2xl text-base font-bold">
-                Book {vehicles.find(v => v.id === selectedVehicle)?.label}
+                Book {selectedV.label}
               </Button>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </RideBottomSheet>
       </div>
     </MobileLayout>
   );

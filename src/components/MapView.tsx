@@ -15,6 +15,9 @@ interface MapViewProps {
   pickupPosition?: [number, number];
   destinationPosition?: [number, number];
   showRoute?: boolean;
+  nearbyDrivers?: [number, number][];
+  onMapClick?: (latlng: [number, number]) => void;
+  interactive?: boolean;
 }
 
 const DEFAULT_CENTER: [number, number] = [-6.2088, 106.8456];
@@ -40,12 +43,22 @@ const destinationIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-// Generate a realistic curved route between two points
-function generateRoutePoints(start: [number, number], end: [number, number], steps = 30): [number, number][] {
+const driverIcon = L.divIcon({
+  className: "driver-marker",
+  html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:hsl(220,25%,10%);border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2-4H8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
+      <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+    </svg>
+  </div>`,
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
+export function generateRoutePoints(start: [number, number], end: [number, number], steps = 30): [number, number][] {
   const points: [number, number][] = [];
   const midLat = (start[0] + end[0]) / 2;
   const midLng = (start[1] + end[1]) / 2;
-  // Add a curve offset perpendicular to the line
   const dLat = end[0] - start[0];
   const dLng = end[1] - start[1];
   const curveLat = midLat + dLng * 0.15;
@@ -53,7 +66,6 @@ function generateRoutePoints(start: [number, number], end: [number, number], ste
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    // Quadratic bezier
     const lat = (1 - t) * (1 - t) * start[0] + 2 * (1 - t) * t * curveLat + t * t * end[0];
     const lng = (1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * curveLng + t * t * end[1];
     points.push([lat, lng]);
@@ -72,10 +84,16 @@ export function MapView({
   pickupPosition,
   destinationPosition,
   showRoute = false,
+  nearbyDrivers,
+  onMapClick,
+  interactive = false,
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const pickupMarkerRef = useRef<L.Marker | null>(null);
+  const destMarkerRef = useRef<L.Marker | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
 
   const locateUser = useCallback(() => {
     if (!("geolocation" in navigator) || !mapInstanceRef.current || !markerRef.current) return;
@@ -90,6 +108,7 @@ export function MapView({
     );
   }, [zoom]);
 
+  // Initialize map once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
@@ -107,93 +126,95 @@ export function MapView({
     const marker = L.marker(pos, { icon: pulseIcon }).addTo(map);
     markerRef.current = marker;
     mapInstanceRef.current = map;
+    routeLayerRef.current = L.layerGroup().addTo(map);
 
-    // Draw route if pickup and destination provided
-    if (showRoute && pickupPosition && destinationPosition) {
-      L.marker(pickupPosition, { icon: pickupIcon }).addTo(map);
-      L.marker(destinationPosition, { icon: destinationIcon }).addTo(map);
-
-      const routePoints = generateRoutePoints(pickupPosition, destinationPosition);
-
-      // Route shadow
-      L.polyline(routePoints, {
-        color: "rgba(0,0,0,0.1)",
-        weight: 8,
-        lineCap: "round",
-        lineJoin: "round",
-      }).addTo(map);
-
-      // Main route line
-      L.polyline(routePoints, {
-        color: "hsl(152,68%,40%)",
-        weight: 4,
-        lineCap: "round",
-        lineJoin: "round",
-        dashArray: "8, 12",
-      }).addTo(map);
-
-      // Fit map to show full route with padding
-      const bounds = L.latLngBounds([pickupPosition, destinationPosition]);
-      map.fitBounds(bounds, { padding: [50, 50] });
-
-      // Place driver marker at pickup initially
-      marker.setLatLng(pickupPosition);
-    }
-
-    let animInterval: ReturnType<typeof setInterval> | null = null;
-
-    if (animateMarker && showRoute && pickupPosition && destinationPosition) {
-      // Animate along the route
-      const routePoints = generateRoutePoints(pickupPosition, destinationPosition);
-      let step = 0;
-      animInterval = setInterval(() => {
-        step++;
-        if (step < routePoints.length) {
-          marker.setLatLng(routePoints[step]);
-        } else {
-          step = 0; // loop
-        }
-      }, 200);
-    } else if (useGeolocation && "geolocation" in navigator) {
+    if (useGeolocation && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const userPos: [number, number] = [position.coords.latitude, position.coords.longitude];
           map.setView(userPos, zoom);
           marker.setLatLng(userPos);
-          if (animateMarker) {
-            let offset = 0;
-            animInterval = setInterval(() => {
-              offset += 0.0002;
-              marker.setLatLng([userPos[0] + Math.sin(offset * 10) * 0.001, userPos[1] + offset]);
-            }, 100);
-          }
         },
-        () => {
-          if (animateMarker) {
-            let offset = 0;
-            animInterval = setInterval(() => {
-              offset += 0.0002;
-              marker.setLatLng([pos[0] + Math.sin(offset * 10) * 0.001, pos[1] + offset]);
-            }, 100);
-          }
-        },
+        () => {},
         { enableHighAccuracy: true, timeout: 8000 }
       );
-    } else if (animateMarker) {
-      let offset = 0;
-      animInterval = setInterval(() => {
-        offset += 0.0002;
-        marker.setLatLng([pos[0] + Math.sin(offset * 10) * 0.001, pos[1] + offset]);
-      }, 100);
     }
 
     return () => {
-      if (animInterval) clearInterval(animInterval);
       map.remove();
       mapInstanceRef.current = null;
       markerRef.current = null;
+      routeLayerRef.current = null;
     };
   }, []);
+
+  // Handle interactive map clicks
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !interactive || !onMapClick) return;
+
+    const handler = (e: L.LeafletMouseEvent) => {
+      onMapClick([e.latlng.lat, e.latlng.lng]);
+    };
+    map.on("click", handler);
+    return () => { map.off("click", handler); };
+  }, [interactive, onMapClick]);
+
+  // Update pickup/destination markers and route
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const routeLayer = routeLayerRef.current;
+    if (!map || !routeLayer) return;
+
+    // Clear old markers
+    if (pickupMarkerRef.current) { map.removeLayer(pickupMarkerRef.current); pickupMarkerRef.current = null; }
+    if (destMarkerRef.current) { map.removeLayer(destMarkerRef.current); destMarkerRef.current = null; }
+    routeLayer.clearLayers();
+
+    if (pickupPosition) {
+      pickupMarkerRef.current = L.marker(pickupPosition, { icon: pickupIcon }).addTo(map);
+    }
+    if (destinationPosition) {
+      destMarkerRef.current = L.marker(destinationPosition, { icon: destinationIcon }).addTo(map);
+    }
+
+    if (showRoute && pickupPosition && destinationPosition) {
+      const routePoints = generateRoutePoints(pickupPosition, destinationPosition);
+      L.polyline(routePoints, { color: "rgba(0,0,0,0.1)", weight: 8, lineCap: "round", lineJoin: "round" }).addTo(routeLayer);
+      L.polyline(routePoints, { color: "hsl(152,68%,40%)", weight: 4, lineCap: "round", lineJoin: "round", dashArray: "8, 12" }).addTo(routeLayer);
+      const bounds = L.latLngBounds([pickupPosition, destinationPosition]);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [pickupPosition, destinationPosition, showRoute]);
+
+  // Nearby drivers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !nearbyDrivers) return;
+
+    const markers = nearbyDrivers.map((pos) => L.marker(pos, { icon: driverIcon }).addTo(map));
+    return () => { markers.forEach((m) => map.removeLayer(m)); };
+  }, [nearbyDrivers]);
+
+  // Animate marker along route
+  useEffect(() => {
+    if (!animateMarker || !showRoute || !pickupPosition || !destinationPosition || !markerRef.current) return;
+
+    const routePoints = generateRoutePoints(pickupPosition, destinationPosition);
+    let step = 0;
+    markerRef.current.setLatLng(pickupPosition);
+
+    const interval = setInterval(() => {
+      step++;
+      if (step < routePoints.length) {
+        markerRef.current?.setLatLng(routePoints[step]);
+      } else {
+        step = 0;
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [animateMarker, pickupPosition, destinationPosition, showRoute]);
 
   return (
     <div className={cn("w-full h-full z-0 relative", className)}>
