@@ -1,95 +1,58 @@
-## Plan: Payment Module
 
-### Summary
 
-Build a centralized payment module that integrates with both the Ride Booking and Shuttle Booking flows. Since this is a client-side demo without a real backend, payment gateway integration (Midtrans/Xendit) will be simulated with realistic UI flows — actual gateway integration would require Supabase Edge Functions and API keys which can be added later.
+## Plan: Structured State Management, API Layer & Models
 
-### Architecture
+Riverpod is Flutter-specific. The React equivalent is React Context + custom hooks (already used in this project). This plan adds the missing pieces: an **AuthContext**, a **ShuttleContext**, structured **TypeScript models**, and a centralized **API service layer** with error handling and token management.
 
-```text
-New context:  PaymentContext  — manages transactions, payment methods, status
-New page:     /payment        — payment processing screen (gateway simulation)
-New page:     /payment/status — payment result page (success/pending/failed)
-Modified:     RideBooking     — uses PaymentContext at booking step
-Modified:     Shuttle         — uses PaymentContext at payment step  
-Modified:     Wallet          — reads transaction history from PaymentContext
-Modified:     RideContext     — expand PaymentMethod type
-```
+### What Will Be Built
 
-### Changes
+**1. TypeScript Models (`src/types/models.ts`)**
+Strongly-typed interfaces for all domain entities:
+- `User` — id, name, email, phone, avatar, role
+- `Driver` — extends User with vehicle info, status, rating, location
+- `Trip` — id, passenger, driver, pickup/dropoff, status, fare, timestamps
+- `Booking` — id, user, schedule, seats, status, payment reference
+- `RouteInfo` — origin, destination, waypoints, distance, duration, polyline
+- `Payment` — id, amount, method, status, transactionRef, timestamps
 
-**1. Create `src/context/PaymentContext.tsx**`
+**2. API Service Layer (`src/lib/api.ts`)**
+- Centralized `ApiClient` class with `get`, `post`, `put`, `delete` methods
+- Token storage and auto-injection via `Authorization` header
+- Error handling interceptor that maps HTTP errors to typed `ApiError` objects
+- Response parsing with generic typing (`api.get<Trip[]>("/trips")`)
+- Request/response logging in dev mode
+- Currently returns mock data; ready to swap to real endpoints
 
-- Payment methods: `cash`, `wallet`, `bank_transfer`, `ewallet`, `credit_card`
-- Transaction state: `{ id, amount, method, status, description, createdAt }`
-- Status flow: `pending → processing → success | failed`
-- Functions: `createTransaction()`, `processPayment()`, `getTransactions()`
-- Store transaction history (in-memory, persists during session)
+**3. Auth Context (`src/context/AuthContext.tsx`)**
+- `AuthProvider` with login (phone+OTP), logout, session persistence
+- Stores `User` model and auth token
+- `useAuth()` hook exposing `user`, `isAuthenticated`, `login()`, `logout()`
+- Guards for protected routes
 
-**2. Create `src/pages/Payment.tsx**` — Payment processing screen
+**4. Shuttle Booking Context (`src/context/ShuttleContext.tsx`)**
+- Extract booking state from `Shuttle.tsx` into a dedicated provider
+- `useShuttle()` hook exposing `bookings`, `createBooking()`, `getBooking()`
+- Booking history persisted in session
 
-- Receives transaction details via context or route state
-- Payment method selection UI with icons:
-  - Cash (immediate success)
-  - PYUGO Wallet (balance check → deduct)
-  - Bank Transfer (simulated VA number + countdown)
-  - E-Wallet (simulated redirect + auto-complete)
-  - QRCODE PAYMENT
-  - Credit Card (simulated card form)
-- "Pay Now" button triggers simulated processing (2s spinner)
-- Redirects to status page on completion
+**5. Refactor Existing Contexts**
+- `RideContext` — align with `Trip` model types
+- `DriverContext` — align with `Driver` model, use `ApiClient` for mock requests
+- `PaymentContext` — align with `Payment` model
 
-**3. Create `src/pages/PaymentStatus.tsx**` — Result page
-
-- Success: green checkmark, transaction ID, amount, "Back to Home" button
-- Failed: red X, retry button
-- Pending: clock icon, "Check Status" button (for bank transfer)
-- Animated entry with framer-motion
-
-**4. Modify `src/pages/RideBooking.tsx**`
-
-- Replace inline payment toggle with navigation to `/payment`
-- Pass fare amount and ride details to PaymentContext before navigating
-
-**5. Modify `src/pages/Shuttle.tsx**`
-
-- Replace inline payment step with navigation to `/payment`
-- Pass shuttle booking amount and details to PaymentContext
-
-**6. Modify `src/pages/Wallet.tsx**`
-
-- Read transaction history from PaymentContext
-- Show real transactions alongside mock data
-- Wallet balance adjusts based on wallet payments
-
-**7. Modify `src/App.tsx**`
-
-- Add PaymentProvider wrapper
-- Add `/payment` and `/payment/status` routes
-
-### Payment Flow
-
-```text
-User confirms ride/shuttle
-  → PaymentContext.createTransaction({ amount, description })
-  → Navigate to /payment
-  → User selects method + confirms
-  → Simulated processing (2s delay)
-  → PaymentContext updates status
-  → Navigate to /payment/status
-  → Success → back to tracking/ticket
-```
-
-### Security Note
-
-This implementation is client-side simulation only. For real payment gateway integration (Midtrans/Xendit), you would need:
-
-- A Supabase Edge Function to create payment tokens server-side
-- Webhook handler for payment callbacks
-- Server-side transaction verification
-These can be added when you're ready to connect a real payment provider.
+**6. Update `App.tsx`**
+- Wrap with `AuthProvider` and `ShuttleProvider`
+- Add route guards for authenticated sections
 
 ### Files
 
-- **Create**: `src/context/PaymentContext.tsx`, `src/pages/Payment.tsx`, `src/pages/PaymentStatus.tsx`
-- **Modify**: `src/App.tsx`, `src/pages/RideBooking.tsx`, `src/pages/Shuttle.tsx`, `src/pages/Wallet.tsx`, `src/context/RideContext.tsx`
+| Action | File |
+|--------|------|
+| Create | `src/types/models.ts` |
+| Create | `src/lib/api.ts` |
+| Create | `src/context/AuthContext.tsx` |
+| Create | `src/context/ShuttleContext.tsx` |
+| Modify | `src/context/RideContext.tsx` — use Trip model |
+| Modify | `src/context/DriverContext.tsx` — use Driver model |
+| Modify | `src/context/PaymentContext.tsx` — use Payment model |
+| Modify | `src/App.tsx` — add providers |
+
