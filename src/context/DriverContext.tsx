@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import type { DriverStatus as ModelDriverStatus, LatLng } from "@/types/models";
 
-export type DriverStatus = "offline" | "online";
+export type DriverStatus = ModelDriverStatus;
 export type TripStatus = "idle" | "requesting" | "navigating_to_pickup" | "at_pickup" | "on_trip" | "completed";
 
 export interface RideRequest {
   id: string;
   passengerName: string;
-  pickup: { label: string; coords: [number, number] };
-  dropoff: { label: string; coords: [number, number] };
+  pickup: { label: string; coords: LatLng };
+  dropoff: { label: string; coords: LatLng };
   estimatedFare: number;
   estimatedDistance: string;
   estimatedDuration: string;

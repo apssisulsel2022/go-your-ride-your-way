@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import type { PaymentMethodType, TransactionStatus } from "@/types/models";
 
-export type PaymentMethodType = "cash" | "wallet" | "bank_transfer" | "ewallet" | "credit_card" | "qris";
-export type TransactionStatus = "pending" | "processing" | "success" | "failed";
+// Re-export types for backward compat
+export type { PaymentMethodType, TransactionStatus };
 
 export interface Transaction {
   id: string;
@@ -52,7 +53,6 @@ export function PaymentProvider({ children }: { children: ReactNode }) {
     );
     setActiveTransactionState((prev) => prev?.id === id ? { ...prev, method, status: "processing" } : prev);
 
-    // Simulate processing delay
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     let success = true;
@@ -66,7 +66,6 @@ export function PaymentProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // 95% success rate for non-wallet methods
     if (method !== "wallet" && method !== "cash" && Math.random() < 0.05) {
       success = false;
     }

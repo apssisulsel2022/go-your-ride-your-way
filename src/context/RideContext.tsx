@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, ReactNode } from "react";
+import type { VehicleClass, PaymentMethodType, TripStatus as ModelTripStatus } from "@/types/models";
 
-export type VehicleType = "bike" | "car" | "premium" | "truck";
-export type PaymentMethod = "cash" | "card" | "wallet" | "bank_transfer" | "ewallet" | "credit_card" | "qris";
-export type RideStatus = "idle" | "searching" | "found" | "arriving" | "on_trip" | "completed" | "timeout";
+// Re-export for backward compatibility
+export type VehicleType = VehicleClass;
+export type PaymentMethod = PaymentMethodType;
+export type RideStatus = ModelTripStatus;
 
 interface RideData {
   pickup: { name: string; latlng: [number, number] | null };
