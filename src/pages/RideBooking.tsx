@@ -327,7 +327,7 @@ export default function RideBooking() {
                   {payment === "cash" ? "Cash" : "Card •••• 4242"}
                 </span>
                 <button
-                  onClick={() => setPayment(payment === "cash" ? "card" : "cash")}
+                  onClick={() => setPayment(payment === "cash" ? "credit_card" : "cash")}
                   className="text-xs text-primary font-bold"
                 >
                   Change

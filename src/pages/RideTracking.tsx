@@ -112,6 +112,7 @@ export default function RideTracking() {
     arriving: "Driver is on the way",
     on_trip: "On trip",
     completed: "You've arrived!",
+    cancelled: "Ride cancelled",
     timeout: "No drivers available",
   };
 
