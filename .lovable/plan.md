@@ -1,48 +1,95 @@
+## Plan: Payment Module
 
+### Summary
 
-## Driver App — Platform Constraint
-
-Lovable projects are built on **React + Vite + Tailwind**. Flutter is not supported in this environment — there is no Flutter SDK, Dart compiler, or native build toolchain available.
-
-### What I Can Build Instead
-
-A **Driver App as a web-based PWA** (Progressive Web App) within this same project, using the existing React stack. It would be installable on phones, work offline, and cover all the requested features:
-
-```text
-/driver/login       → OTP-style login screen
-/driver/home        → Map view + online/offline toggle
-/driver/trip        → Active trip screen with navigation
-/driver/earnings    → Earnings dashboard
-```
-
-### Feature Mapping
-
-| Requested Feature | Web PWA Approach |
-|---|---|
-| Login (OTP) | Phone input + 6-digit OTP screen (simulated) |
-| Online/Offline toggle | Prominent switch on map screen |
-| Incoming ride request | Full-screen overlay with Accept/Reject buttons |
-| Navigation to pickup/dropoff | Leaflet map with route polyline + turn-by-turn hints |
-| Trip management | State machine: navigating → picked up → dropping off → completed |
-| Earnings dashboard | Summary cards + daily/weekly chart |
-| Send location every 3-5s | `navigator.geolocation.watchPosition` (simulated in demo) |
-| Receive ride requests | Simulated with timers (real-time would need Supabase) |
+Build a centralized payment module that integrates with both the Ride Booking and Shuttle Booking flows. Since this is a client-side demo without a real backend, payment gateway integration (Midtrans/Xendit) will be simulated with realistic UI flows — actual gateway integration would require Supabase Edge Functions and API keys which can be added later.
 
 ### Architecture
 
-- New routes under `/driver/*` with a separate `DriverLayout` (no bottom nav from passenger app)
-- Driver state context (`DriverContext`) for status, current trip, earnings
-- Reuse existing `MapView` component for the map
-- All mock/client-side — no backend needed for the demo
-- Large, high-contrast UI buttons optimized for driving context
+```text
+New context:  PaymentContext  — manages transactions, payment methods, status
+New page:     /payment        — payment processing screen (gateway simulation)
+New page:     /payment/status — payment result page (success/pending/failed)
+Modified:     RideBooking     — uses PaymentContext at booking step
+Modified:     Shuttle         — uses PaymentContext at payment step  
+Modified:     Wallet          — reads transaction history from PaymentContext
+Modified:     RideContext     — expand PaymentMethod type
+```
+
+### Changes
+
+**1. Create `src/context/PaymentContext.tsx**`
+
+- Payment methods: `cash`, `wallet`, `bank_transfer`, `ewallet`, `credit_card`
+- Transaction state: `{ id, amount, method, status, description, createdAt }`
+- Status flow: `pending → processing → success | failed`
+- Functions: `createTransaction()`, `processPayment()`, `getTransactions()`
+- Store transaction history (in-memory, persists during session)
+
+**2. Create `src/pages/Payment.tsx**` — Payment processing screen
+
+- Receives transaction details via context or route state
+- Payment method selection UI with icons:
+  - Cash (immediate success)
+  - PYUGO Wallet (balance check → deduct)
+  - Bank Transfer (simulated VA number + countdown)
+  - E-Wallet (simulated redirect + auto-complete)
+  - QRCODE PAYMENT
+  - Credit Card (simulated card form)
+- "Pay Now" button triggers simulated processing (2s spinner)
+- Redirects to status page on completion
+
+**3. Create `src/pages/PaymentStatus.tsx**` — Result page
+
+- Success: green checkmark, transaction ID, amount, "Back to Home" button
+- Failed: red X, retry button
+- Pending: clock icon, "Check Status" button (for bank transfer)
+- Animated entry with framer-motion
+
+**4. Modify `src/pages/RideBooking.tsx**`
+
+- Replace inline payment toggle with navigation to `/payment`
+- Pass fare amount and ride details to PaymentContext before navigating
+
+**5. Modify `src/pages/Shuttle.tsx**`
+
+- Replace inline payment step with navigation to `/payment`
+- Pass shuttle booking amount and details to PaymentContext
+
+**6. Modify `src/pages/Wallet.tsx**`
+
+- Read transaction history from PaymentContext
+- Show real transactions alongside mock data
+- Wallet balance adjusts based on wallet payments
+
+**7. Modify `src/App.tsx**`
+
+- Add PaymentProvider wrapper
+- Add `/payment` and `/payment/status` routes
+
+### Payment Flow
+
+```text
+User confirms ride/shuttle
+  → PaymentContext.createTransaction({ amount, description })
+  → Navigate to /payment
+  → User selects method + confirms
+  → Simulated processing (2s delay)
+  → PaymentContext updates status
+  → Navigate to /payment/status
+  → Success → back to tracking/ticket
+```
+
+### Security Note
+
+This implementation is client-side simulation only. For real payment gateway integration (Midtrans/Xendit), you would need:
+
+- A Supabase Edge Function to create payment tokens server-side
+- Webhook handler for payment callbacks
+- Server-side transaction verification
+These can be added when you're ready to connect a real payment provider.
 
 ### Files
 
-- **Create**: `src/pages/driver/DriverLogin.tsx`, `src/pages/driver/DriverHome.tsx`, `src/pages/driver/DriverTrip.tsx`, `src/pages/driver/DriverEarnings.tsx`
-- **Create**: `src/context/DriverContext.tsx`, `src/components/driver/DriverLayout.tsx`
-- **Modify**: `src/App.tsx` (add driver routes)
-
-### Note
-
-If you specifically need a native Flutter app, that would need to be built outside Lovable using Flutter tooling. This plan builds the equivalent as a web app within your current project.
-
+- **Create**: `src/context/PaymentContext.tsx`, `src/pages/Payment.tsx`, `src/pages/PaymentStatus.tsx`
+- **Modify**: `src/App.tsx`, `src/pages/RideBooking.tsx`, `src/pages/Shuttle.tsx`, `src/pages/Wallet.tsx`, `src/context/RideContext.tsx`
