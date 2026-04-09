@@ -15,6 +15,11 @@ import Profile from "./pages/Profile";
 import RideBooking from "./pages/RideBooking";
 import RideTracking from "./pages/RideTracking";
 import NotFound from "./pages/NotFound";
+import DriverLogin from "./pages/driver/DriverLogin";
+import DriverHome from "./pages/driver/DriverHome";
+import DriverTrip from "./pages/driver/DriverTrip";
+import DriverEarnings from "./pages/driver/DriverEarnings";
+import { DriverProvider } from "./context/DriverContext";
 
 const queryClient = new QueryClient();
 
@@ -23,22 +28,28 @@ const App = () => (
     <ThemeProvider>
       <TooltipProvider>
         <RideProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Splash />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/home" element={<Index />} />
-              <Route path="/shuttle" element={<Shuttle />} />
-              <Route path="/activity" element={<Activity />} />
-              <Route path="/wallet" element={<Wallet />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/ride/book" element={<RideBooking />} />
-              <Route path="/ride/tracking" element={<RideTracking />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <DriverProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Splash />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/home" element={<Index />} />
+                <Route path="/shuttle" element={<Shuttle />} />
+                <Route path="/activity" element={<Activity />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/ride/book" element={<RideBooking />} />
+                <Route path="/ride/tracking" element={<RideTracking />} />
+                <Route path="/driver/login" element={<DriverLogin />} />
+                <Route path="/driver/home" element={<DriverHome />} />
+                <Route path="/driver/trip" element={<DriverTrip />} />
+                <Route path="/driver/earnings" element={<DriverEarnings />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </DriverProvider>
         </RideProvider>
       </TooltipProvider>
     </ThemeProvider>
