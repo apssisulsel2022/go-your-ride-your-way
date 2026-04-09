@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   Bus, MapPin, Clock, Users, ChevronLeft, CalendarDays, ArrowRight, ArrowUpDown,
   CreditCard, Wallet, Building2, CheckCircle2, User, Phone, Mail,
-  Armchair,
+  Armchair, Download, Share2,
 } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
+import html2canvas from "html2canvas";
 
 // ─── Data ───────────────────────────────────────────────────────────────────
 
