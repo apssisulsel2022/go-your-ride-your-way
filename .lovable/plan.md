@@ -1,72 +1,48 @@
 
 
-## Plan: Full Shuttle Booking Flow
+## Driver App — Platform Constraint
 
-### Summary
-Replace the current simple Shuttle page with a multi-step booking wizard: route search with date picker, schedule selection, interactive seat map, passenger form, payment, and QR e-ticket — all accessible as guest.
+Lovable projects are built on **React + Vite + Tailwind**. Flutter is not supported in this environment — there is no Flutter SDK, Dart compiler, or native build toolchain available.
 
-### Architecture
-Single page (`Shuttle.tsx`) with a `step` state machine driving 6 steps. All data is mock/client-side. No backend needed.
+### What I Can Build Instead
+
+A **Driver App as a web-based PWA** (Progressive Web App) within this same project, using the existing React stack. It would be installable on phones, work offline, and cover all the requested features:
 
 ```text
-Step 1: Search       → Route selector (dropdown) + date picker + passenger count
-Step 2: Schedules    → Schedule cards for selected route/date
-Step 3: Seat Select  → Interactive bus seat grid (4-col layout: 2+aisle+2)
-Step 4: Passenger    → Name, phone, email form (guest checkout)
-Step 5: Payment      → Booking summary + payment method selection + confirm
-Step 6: E-Ticket     → QR code + booking details + download/share
+/driver/login       → OTP-style login screen
+/driver/home        → Map view + online/offline toggle
+/driver/trip        → Active trip screen with navigation
+/driver/earnings    → Earnings dashboard
 ```
 
-### Changes
+### Feature Mapping
 
-**1. Rewrite `src/pages/Shuttle.tsx`** (major rewrite)
-- Multi-step flow with back navigation and step indicator
-- Step state: `search | schedules | seats | passenger | payment | ticket`
-- Each step rendered conditionally with `AnimatePresence` transitions
+| Requested Feature | Web PWA Approach |
+|---|---|
+| Login (OTP) | Phone input + 6-digit OTP screen (simulated) |
+| Online/Offline toggle | Prominent switch on map screen |
+| Incoming ride request | Full-screen overlay with Accept/Reject buttons |
+| Navigation to pickup/dropoff | Leaflet map with route polyline + turn-by-turn hints |
+| Trip management | State machine: navigating → picked up → dropping off → completed |
+| Earnings dashboard | Summary cards + daily/weekly chart |
+| Send location every 3-5s | `navigator.geolocation.watchPosition` (simulated in demo) |
+| Receive ride requests | Simulated with timers (real-time would need Supabase) |
 
-**2. Step 1 — Route Search**
-- Origin/destination dropdowns from a predefined city list (Jakarta, Bandung, Surabaya, Yogyakarta, Semarang)
-- Shadcn date picker (Popover + Calendar) for travel date
-- Passenger count selector (1-4)
-- "Search" button advances to step 2
+### Architecture
 
-**3. Step 2 — Schedule List**
-- Filter mock schedules by selected route
-- Schedule cards showing: departure/arrival time, duration, operator name, price, seats available
-- Tap to select, then "Continue" button
+- New routes under `/driver/*` with a separate `DriverLayout` (no bottom nav from passenger app)
+- Driver state context (`DriverContext`) for status, current trip, earnings
+- Reuse existing `MapView` component for the map
+- All mock/client-side — no backend needed for the demo
+- Large, high-contrast UI buttons optimized for driving context
 
-**4. Step 3 — Seat Selection**
-- Interactive bus seat grid: 10 rows x 4 seats (2-aisle-2 layout)
-- Seat states: available (gray), selected (primary), occupied (dark/disabled)
-- Pre-mark ~30% seats as occupied randomly
-- Select up to `passengerCount` seats
-- Legend showing seat status colors
+### Files
 
-**5. Step 4 — Passenger Form**
-- One form per passenger (based on count)
-- Fields: Full name, phone number, email (first passenger only)
-- Simple validation (required fields)
+- **Create**: `src/pages/driver/DriverLogin.tsx`, `src/pages/driver/DriverHome.tsx`, `src/pages/driver/DriverTrip.tsx`, `src/pages/driver/DriverEarnings.tsx`
+- **Create**: `src/context/DriverContext.tsx`, `src/components/driver/DriverLayout.tsx`
+- **Modify**: `src/App.tsx` (add driver routes)
 
-**6. Step 5 — Payment & Summary**
-- Booking summary card: route, date, schedule, seats, passengers, total price
-- Payment method selector: Cash, Bank Transfer, E-Wallet (radio group)
-- "Confirm & Pay" button generates booking ID and advances
+### Note
 
-**7. Step 6 — E-Ticket**
-- QR code generated using a simple SVG-based QR pattern (or a small library — check if `qrcode` is available, otherwise use a deterministic dot grid as visual placeholder)
-- Ticket card: booking ID, route, date, time, seat numbers, passenger names, QR code
-- "Book Another" button resets flow
-
-**8. Data Model** (all in-component, no external state)
-- `cities`: string array
-- `schedules`: array with route, times, price, operator, totalSeats
-- `seatLayout`: generated 40-seat grid with random occupancy
-- `bookingId`: generated on confirm (`PYU-XXXXXX`)
-
-### Technical Details
-- **Files modified**: `src/pages/Shuttle.tsx` (full rewrite)
-- **New dependency**: `qrcode.react` for QR code generation (install via npm)
-- **Existing deps used**: framer-motion, shadcn Calendar/Popover, lucide-react
-- **No login required** — entire flow is guest-accessible
-- **Responsive** — uses existing `MobileLayout` wrapper with `max-w-lg`
+If you specifically need a native Flutter app, that would need to be built outside Lovable using Flutter tooling. This plan builds the equivalent as a web app within your current project.
 
