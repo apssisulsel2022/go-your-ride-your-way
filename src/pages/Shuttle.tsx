@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   Bus, MapPin, Clock, Users, ChevronLeft, CalendarDays, ArrowRight, ArrowUpDown,
   CreditCard, Wallet, Building2, CheckCircle2, User, Phone, Mail,
-  Armchair,
+  Armchair, Download, Share2,
 } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
+import html2canvas from "html2canvas";
 
 // ─── Data ───────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,40 @@ export default function Shuttle() {
     () => ALL_SCHEDULES.filter((s) => s.from === from && s.to === to),
     [from, to]
   );
+
+  const ticketRef = useRef<HTMLDivElement>(null);
+
+  const captureTicket = async (): Promise<Blob | null> => {
+    if (!ticketRef.current) return null;
+    const canvas = await html2canvas(ticketRef.current, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+    });
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  };
+
+  const downloadTicket = async () => {
+    const blob = await captureTicket();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${bookingId}-ticket.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const shareTicket = async () => {
+    const blob = await captureTicket();
+    if (!blob) return;
+    const file = new File([blob], `${bookingId}-ticket.png`, { type: "image/png" });
+    if (navigator.share) {
+      await navigator.share({ title: `Shuttle Ticket ${bookingId}`, files: [file] }).catch(() => {});
+    } else {
+      downloadTicket();
+    }
+  };
 
   // ─── Navigation
   const goBack = useCallback(() => {
@@ -589,7 +624,7 @@ export default function Shuttle() {
                 <p className="text-xs text-muted-foreground">Show this e-ticket to the driver</p>
               </motion.div>
 
-              <Card className="p-5 rounded-2xl space-y-4">
+              <Card ref={ticketRef} className="p-5 rounded-2xl space-y-4">
                 {/* Ticket header */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">E-TICKET</span>
@@ -647,6 +682,15 @@ export default function Shuttle() {
                   </div>
                 </div>
               </Card>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={downloadTicket} variant="outline" className="h-11 rounded-2xl font-bold">
+                  <Download className="h-4 w-4 mr-1.5" /> Download
+                </Button>
+                <Button onClick={shareTicket} variant="outline" className="h-11 rounded-2xl font-bold">
+                  <Share2 className="h-4 w-4 mr-1.5" /> Share
+                </Button>
+              </div>
 
               <Button onClick={resetBooking} variant="outline" className="w-full h-11 rounded-2xl font-bold">
                 Book Another Shuttle
