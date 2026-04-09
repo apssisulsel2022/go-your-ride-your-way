@@ -1,71 +1,65 @@
-## Plan: PYU-GO App Shell — Splash, Onboarding, Redesigned Home, Wallet, Dark Mode
+
+
+## Plan: Enhanced On-Demand Ride Feature
 
 ### Summary
+Rebuild the ride booking and tracking flow into a polished, stateful experience with map-integrated location picking, nearby driver markers, fare estimation, bottom-sheet panels, error/timeout handling, and simulated real-time updates.
 
-Add a splash screen, onboarding flow, redesigned home with two main entry points ("Ride Now" and "Shuttle Booking"), a Wallet tab, light mode, and guest mode support.
+### What Already Exists
+- `RideBooking.tsx` — basic 2-step form (location text inputs + vehicle selection), no map
+- `RideTracking.tsx` — auto-advancing stage timer with map, driver card, rating
+- `MapView.tsx` — Leaflet map with geolocation, route polyline, marker animation
 
 ### Changes
 
-**1. Create Splash Screen (`src/pages/Splash.tsx`)**
+**1. Redesign RideBooking.tsx — Map-First with Bottom Sheet**
+- Full-screen map background (like Index.tsx) with the bottom sheet overlay
+- Replace text-only location step with a map-based picker:
+  - Tap map to set pickup/dropoff (or use text search in bottom sheet)
+  - Show pickup (green) and dropoff (amber) markers on the map
+  - Draw route polyline once both are set, with distance/duration estimate
+- Add "nearby drivers" — 4-5 fake driver markers scattered around the user's position on the map using a car icon
+- Bottom sheet states flow through these steps:
+  1. **Location picking** — pickup/dropoff inputs, suggestions, "Use my location" button
+  2. **Fare estimation** — route summary, vehicle list with prices/ETAs, payment method selector
+  3. **Confirm** — final confirmation card with selected vehicle, fare, and "Book Ride" button
 
-- Full-screen animated splash with PYU-GO logo (green + amber)
-- Auto-navigates to onboarding (first visit) or home (returning user) after ~2s
-- Uses `localStorage` to track if onboarding was completed
-- Framer Motion fade/scale animations
+**2. Enhance MapView.tsx — New Props**
+- Add `nearbyDrivers?: [number, number][]` prop to render small car markers
+- Add `onMapClick?: (latlng: [number, number]) => void` callback for location picking
+- Add `interactive?: boolean` prop to enable click-to-place-marker mode
+- Create a car-shaped driver icon (rotated div or SVG)
 
-**2. Create Onboarding Screen (`src/pages/Onboarding.tsx`)**
+**3. Rebuild RideTracking.tsx — Full State Machine**
+- Replace simple auto-timer with a proper state machine approach:
+  - **Searching** — pulsing animation, "Finding your driver..." with spinner, cancel button, 15s simulated timeout with retry option
+  - **Driver Found** — driver info card slides up (name, photo initials, vehicle, plate, rating), ETA countdown
+  - **Driver Arriving** — driver marker animates toward pickup on map, "Your driver is arriving" status, call/message buttons
+  - **On Trip** — driver marker animates along route, live ETA display, trip info (distance traveled, fare running), SOS button prominent
+  - **Completed** — arrival celebration, star rating (interactive — track selected stars), fare summary card, tip option, "Done" button
+- Add **error states**:
+  - "No driver found" after timeout — show retry button + "Try different vehicle" option
+  - Cancel confirmation dialog before canceling an active ride
+- Simulated real-time: use `setInterval` to update driver position along route and decrement ETA
 
-- 3-slide swipeable onboarding carousel:
-  1. "Ride Anywhere" — on-demand ride hailing
-  2. "Shuttle Booking" — intercity travel, no login needed
-  3. "Track in Real-Time" — live map tracking
-- Each slide has an illustration (icon-based), title, and description
-- Dot indicators + "Next" / "Get Started" button
-- Sets `localStorage` flag on completion, navigates to home
+**4. New Component: RideBottomSheet.tsx**
+- Reusable draggable-style bottom sheet panel (using existing rounded-t-3xl pattern)
+- Contains the ride panel content based on current step
+- Handles the visual transitions between steps with `AnimatePresence`
 
-**3. Redesign Home Screen (`src/pages/Index.tsx`)**
-
-- Keep the map header with geolocation
-- Replace current bottom sheet content with two prominent entry cards:
-  - **"Ride Now"** — large card with Car icon, description, navigates to `/ride/book`
-  - **"Shuttle Booking"** — large card with Bus icon, description, navigates to `/shuttle`, badge: "No login required"
-- Keep vehicle type quick-select grid below
-- Keep recent places section
-
-**4. Create Wallet Page (`src/pages/Wallet.tsx`)**
-
-- Balance display card with top-up button
-- Recent transactions list (mock data)
-- Payment methods section
-
-**5. Update Bottom Navigation (`src/components/layout/BottomNav.tsx`)**
-
-- Replace "Shuttle" tab with "Wallet" tab (Wallet icon)
-- Tabs: Home, Activity, Wallet, Profile
-- Shuttle is now accessed from the Home screen entry point
-
-**6. Add Dark/Light Mode Support**
-
-- Create `src/hooks/use-theme.tsx` — theme context with `localStorage` persistence
-- Wrap app in `ThemeProvider` in `App.tsx`
-- Add toggle in Profile page (sun/moon icon)
-- Dark theme CSS variables already exist in `index.css` (`.dark` class)
-
-**7. Update Routing (`src/App.tsx`)**
-
-- Add `/splash` and `/onboarding` routes
-- Change `/` to render Splash, move current home to `/home`
-- Or: render Splash at `/`, redirect to `/home` after splash
-
-**8. Guest Mode Handling**
-
-- Shuttle booking remains accessible without auth checks
-- "Ride Now" works in current guest mode (no auth yet)
-- Profile page already shows "Guest User" with sign-in prompt
+**5. Pass Ride Context Between Pages**
+- Use URL search params or a simple React context/zustand store to pass:
+  - Pickup/dropoff locations and names
+  - Selected vehicle type
+  - Payment method
+- From RideBooking → RideTracking so the tracking page shows real route data
 
 ### Technical Details
 
-- **New files**: `Splash.tsx`, `Onboarding.tsx`, `Wallet.tsx`, `use-theme.tsx`
-- **Modified files**: `App.tsx`, `Index.tsx`, `BottomNav.tsx`, `Profile.tsx`, `main.tsx`
-- **No new dependencies** — uses existing framer-motion, lucide-react, tailwind
-- Theme toggle applies `dark` class to `<html>` element, leveraging existing CSS variables
+- **Files created**: `src/components/ride/RideBottomSheet.tsx`, `src/context/RideContext.tsx`
+- **Files modified**: `src/pages/RideBooking.tsx` (major rewrite), `src/pages/RideTracking.tsx` (major rewrite), `src/components/MapView.tsx` (new props), `src/App.tsx` (wrap with RideProvider)
+- **No new dependencies** — uses existing leaflet, framer-motion, lucide-react
+- Driver markers use Leaflet `divIcon` with a rotated car SVG
+- Fake nearby drivers generated as random offsets from user position
+- State transitions use `useState` + `useEffect` timers (simulated backend)
+
