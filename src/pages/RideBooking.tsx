@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import { ArrowLeft, MapPin, Navigation, Clock, Car, Bike, Truck, CreditCard, Wallet, Crosshair } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation, Clock, Car, Bike, Truck, CreditCard, Wallet, Crosshair, Loader2, Search } from "lucide-react";
+import { useGeocoding, type GeocodingResult } from "@/hooks/use-geocoding";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +19,10 @@ const vehicles = [
   { id: "truck" as const, icon: Truck, label: "PYU Truck", eta: "12 min", price: "Rp 60,000", desc: "Large cargo delivery" },
 ];
 
-const suggestions = [
-  { name: "Grand Indonesia Mall", addr: "Jl. MH Thamrin No. 1", latlng: [-6.1950, 106.8220] as [number, number] },
-  { name: "Monas", addr: "Gambir, Central Jakarta", latlng: [-6.1754, 106.8272] as [number, number] },
-  { name: "Blok M Plaza", addr: "Jl. Sultan Hasanuddin", latlng: [-6.2443, 106.7981] as [number, number] },
+const defaultSuggestions: GeocodingResult[] = [
+  { name: "Grand Indonesia Mall", addr: "Jl. MH Thamrin No. 1", latlng: [-6.1950, 106.8220] },
+  { name: "Monas", addr: "Gambir, Central Jakarta", latlng: [-6.1754, 106.8272] },
+  { name: "Blok M Plaza", addr: "Jl. Sultan Hasanuddin", latlng: [-6.2443, 106.7981] },
 ];
 
 type Step = "location" | "fare" | "confirm";
@@ -38,6 +39,10 @@ export default function RideBooking() {
   const [payment, setPayment] = useState(ride.payment);
   const [step, setStep] = useState<Step>("location");
   const [pickingField, setPickingField] = useState<"pickup" | "destination">("pickup");
+
+  const searchQuery = pickingField === "pickup" ? pickupName : destName;
+  const { results: geocodeResults, loading: geocodeLoading } = useGeocoding(searchQuery);
+  const displayResults = geocodeResults.length > 0 ? geocodeResults : defaultSuggestions;
 
   const nearbyDrivers = useMemo<[number, number][]>(() => {
     const base = pickupPos || [-6.2088, 106.8456];
@@ -57,7 +62,7 @@ export default function RideBooking() {
     }
   }, [pickingField]);
 
-  const handleSuggestion = (s: typeof suggestions[0]) => {
+  const handleSuggestion = (s: GeocodingResult) => {
     if (pickingField === "pickup" || (!pickupPos && !destPos)) {
       setPickupName(s.name);
       setPickupPos(s.latlng);
@@ -179,14 +184,23 @@ export default function RideBooking() {
               </button>
 
               <div>
-                <p className="text-xs font-bold text-muted-foreground mb-2">SUGGESTIONS</p>
-                {suggestions.map((s) => (
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-bold text-muted-foreground">
+                    {geocodeResults.length > 0 ? "SEARCH RESULTS" : "SUGGESTIONS"}
+                  </p>
+                  {geocodeLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </div>
+                {displayResults.map((s, i) => (
                   <button
-                    key={s.name}
+                    key={`${s.name}-${i}`}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/60 transition-colors"
                     onClick={() => handleSuggestion(s)}
                   >
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    {geocodeResults.length > 0 ? (
+                      <Search className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                    )}
                     <div className="text-left">
                       <p className="text-sm font-semibold">{s.name}</p>
                       <p className="text-xs text-muted-foreground">{s.addr}</p>
