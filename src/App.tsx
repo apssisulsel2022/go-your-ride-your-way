@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { RideProvider } from "@/context/RideContext";
+import { PaymentProvider } from "@/context/PaymentContext";
 import Splash from "./pages/Splash";
 import Onboarding from "./pages/Onboarding";
 import Index from "./pages/Index";
@@ -14,6 +15,8 @@ import Wallet from "./pages/Wallet";
 import Profile from "./pages/Profile";
 import RideBooking from "./pages/RideBooking";
 import RideTracking from "./pages/RideTracking";
+import Payment from "./pages/Payment";
+import PaymentStatus from "./pages/PaymentStatus";
 import NotFound from "./pages/NotFound";
 import DriverLogin from "./pages/driver/DriverLogin";
 import DriverHome from "./pages/driver/DriverHome";
@@ -28,6 +31,7 @@ const App = () => (
     <ThemeProvider>
       <TooltipProvider>
         <RideProvider>
+          <PaymentProvider>
           <DriverProvider>
             <Toaster />
             <Sonner />
@@ -42,6 +46,8 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/ride/book" element={<RideBooking />} />
                 <Route path="/ride/tracking" element={<RideTracking />} />
+                <Route path="/payment" element={<Payment />} />
+                <Route path="/payment/status" element={<PaymentStatus />} />
                 <Route path="/driver/login" element={<DriverLogin />} />
                 <Route path="/driver/home" element={<DriverHome />} />
                 <Route path="/driver/trip" element={<DriverTrip />} />
@@ -50,6 +56,7 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </DriverProvider>
+          </PaymentProvider>
         </RideProvider>
       </TooltipProvider>
     </ThemeProvider>

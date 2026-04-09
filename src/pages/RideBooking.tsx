@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { MapView } from "@/components/MapView";
 import { RideBottomSheet } from "@/components/ride/RideBottomSheet";
 import { useRide } from "@/context/RideContext";
+import { usePayment } from "@/context/PaymentContext";
 
 const vehicles = [
   { id: "bike" as const, icon: Bike, label: "PYU Bike", eta: "3 min", price: "Rp 8,000", desc: "Affordable motorcycle ride" },
@@ -30,6 +31,7 @@ type Step = "location" | "fare" | "confirm";
 export default function RideBooking() {
   const navigate = useNavigate();
   const { ride, setRide } = useRide();
+  const { createTransaction } = usePayment();
 
   const [pickupName, setPickupName] = useState(ride.pickup.name);
   const [destName, setDestName] = useState(ride.destination.name);
@@ -93,15 +95,22 @@ export default function RideBooking() {
   const handleSelectVehicle = () => setStep("confirm");
 
   const handleBook = () => {
+    const fare = vehicles.find((v) => v.id === selectedVehicle)?.price || "Rp 25,000";
+    const fareNum = parseInt(fare.replace(/\D/g, ""));
     setRide({
       pickup: { name: pickupName, latlng: pickupPos },
       destination: { name: destName, latlng: destPos },
       vehicle: selectedVehicle,
       payment,
-      fare: vehicles.find((v) => v.id === selectedVehicle)?.price || "Rp 25,000",
+      fare,
       status: "searching",
     });
-    navigate("/ride/tracking");
+    createTransaction({
+      amount: fareNum,
+      description: `Ride: ${pickupName} → ${destName}`,
+      returnPath: "/ride/tracking",
+    });
+    navigate("/payment");
   };
 
   const goBack = () => {
