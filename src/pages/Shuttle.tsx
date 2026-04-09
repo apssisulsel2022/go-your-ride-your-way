@@ -117,6 +117,40 @@ export default function Shuttle() {
     [from, to]
   );
 
+  const ticketRef = useRef<HTMLDivElement>(null);
+
+  const captureTicket = async (): Promise<Blob | null> => {
+    if (!ticketRef.current) return null;
+    const canvas = await html2canvas(ticketRef.current, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+    });
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  };
+
+  const downloadTicket = async () => {
+    const blob = await captureTicket();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${bookingId}-ticket.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const shareTicket = async () => {
+    const blob = await captureTicket();
+    if (!blob) return;
+    const file = new File([blob], `${bookingId}-ticket.png`, { type: "image/png" });
+    if (navigator.share) {
+      await navigator.share({ title: `Shuttle Ticket ${bookingId}`, files: [file] }).catch(() => {});
+    } else {
+      downloadTicket();
+    }
+  };
+
   // ─── Navigation
   const goBack = useCallback(() => {
     const prev = STEPS[stepIdx - 1];
