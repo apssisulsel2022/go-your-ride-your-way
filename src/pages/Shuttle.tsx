@@ -215,7 +215,7 @@ export default function Shuttle() {
           {step === "search" && (
             <motion.div key="search" {...anim} className="space-y-4">
               <Card className="p-4 rounded-2xl space-y-4">
-                <div className="space-y-3">
+                <div className="relative space-y-3">
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1.5 block">From</Label>
                     <Select value={from} onValueChange={setFrom}>
@@ -229,6 +229,15 @@ export default function Shuttle() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {/* Swap button */}
+                  <button
+                    type="button"
+                    onClick={() => { setFrom(to); setTo(from); }}
+                    disabled={!from && !to}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-40"
+                  >
+                    <ArrowUpDown className="h-3.5 w-3.5" />
+                  </button>
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1.5 block">To</Label>
                     <Select value={to} onValueChange={setTo}>
