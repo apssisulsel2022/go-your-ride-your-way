@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import { ArrowLeft, MapPin, Navigation, Clock, Car, Bike, Truck, CreditCard, Wallet, Crosshair } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation, Clock, Car, Bike, Truck, CreditCard, Wallet, Crosshair, Loader2, Search } from "lucide-react";
+import { useGeocoding, type GeocodingResult } from "@/hooks/use-geocoding";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +19,10 @@ const vehicles = [
   { id: "truck" as const, icon: Truck, label: "PYU Truck", eta: "12 min", price: "Rp 60,000", desc: "Large cargo delivery" },
 ];
 
-const suggestions = [
-  { name: "Grand Indonesia Mall", addr: "Jl. MH Thamrin No. 1", latlng: [-6.1950, 106.8220] as [number, number] },
-  { name: "Monas", addr: "Gambir, Central Jakarta", latlng: [-6.1754, 106.8272] as [number, number] },
-  { name: "Blok M Plaza", addr: "Jl. Sultan Hasanuddin", latlng: [-6.2443, 106.7981] as [number, number] },
+const defaultSuggestions: GeocodingResult[] = [
+  { name: "Grand Indonesia Mall", addr: "Jl. MH Thamrin No. 1", latlng: [-6.1950, 106.8220] },
+  { name: "Monas", addr: "Gambir, Central Jakarta", latlng: [-6.1754, 106.8272] },
+  { name: "Blok M Plaza", addr: "Jl. Sultan Hasanuddin", latlng: [-6.2443, 106.7981] },
 ];
 
 type Step = "location" | "fare" | "confirm";
