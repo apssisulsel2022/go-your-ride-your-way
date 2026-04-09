@@ -3,16 +3,29 @@ import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { usePayment } from "@/context/PaymentContext";
 
-const transactions = [
-  { id: 1, label: "Ride to Sudirman", amount: -25000, date: "Today, 14:30", type: "out" },
-  { id: 2, label: "Top Up", amount: 100000, date: "Today, 10:00", type: "in" },
-  { id: 3, label: "Shuttle - Bandung", amount: -75000, date: "Yesterday", type: "out" },
-  { id: 4, label: "Cashback Reward", amount: 5000, date: "Yesterday", type: "in" },
-  { id: 5, label: "Ride to Kemang", amount: -18000, date: "Apr 7", type: "out" },
+const mockTransactions = [
+  { id: "m1", label: "Top Up", amount: 100000, date: "Today, 10:00", type: "in" },
+  { id: "m2", label: "Cashback Reward", amount: 5000, date: "Yesterday", type: "in" },
 ];
 
 export default function Wallet() {
+  const { transactions: paymentTxs, walletBalance } = usePayment();
+
+  const allTransactions = [
+    ...paymentTxs
+      .filter((tx) => tx.status === "success")
+      .map((tx) => ({
+        id: tx.id,
+        label: tx.description,
+        amount: -tx.amount,
+        date: tx.createdAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+        type: "out" as const,
+      })),
+    ...mockTransactions,
+  ];
+
   return (
     <MobileLayout>
       <div className="px-4 pt-6 space-y-5">
@@ -22,7 +35,7 @@ export default function Wallet() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-5 rounded-2xl bg-primary text-primary-foreground">
             <p className="text-sm font-medium opacity-80">Your Balance</p>
-            <p className="text-3xl font-extrabold mt-1">Rp 180.000</p>
+            <p className="text-3xl font-extrabold mt-1">Rp {walletBalance.toLocaleString("id-ID")}</p>
             <Button
               variant="secondary"
               className="mt-4 h-10 rounded-xl font-bold gap-2"
@@ -58,7 +71,7 @@ export default function Wallet() {
         <div>
           <h3 className="text-sm font-bold mb-2">Recent Transactions</h3>
           <div className="space-y-1">
-            {transactions.map((tx, i) => (
+            {allTransactions.map((tx, i) => (
               <motion.div
                 key={tx.id}
                 initial={{ opacity: 0, x: -10 }}
