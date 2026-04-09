@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
 export type VehicleType = "bike" | "car" | "premium" | "truck";
-export type PaymentMethod = "cash" | "card";
+export type PaymentMethod = "cash" | "card" | "wallet" | "bank_transfer" | "ewallet" | "credit_card" | "qris";
 export type RideStatus = "idle" | "searching" | "found" | "arriving" | "on_trip" | "completed" | "timeout";
 
 interface RideData {
