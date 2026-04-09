@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bus, MapPin, Clock, Users, ChevronLeft, CalendarDays, ArrowRight, ArrowUpDown,
   CreditCard, Wallet, Building2, CheckCircle2, User, Phone, Mail,
@@ -15,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { usePayment } from "@/context/PaymentContext";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import html2canvas from "html2canvas";
@@ -86,6 +88,8 @@ function formatPrice(n: number) {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function Shuttle() {
+  const navigate = useNavigate();
+  const { createTransaction } = usePayment();
   const [step, setStep] = useState<BookingStep>("search");
   const stepIdx = STEPS.indexOf(step);
 
@@ -188,7 +192,12 @@ export default function Shuttle() {
   const confirmBooking = () => {
     const id = "PYU-" + Math.random().toString(36).substring(2, 8).toUpperCase();
     setBookingId(id);
-    setStep("ticket");
+    createTransaction({
+      amount: totalPrice,
+      description: `Shuttle: ${from} → ${to}`,
+      returnPath: "/shuttle",
+    });
+    navigate("/payment");
   };
 
   const resetBooking = () => {
