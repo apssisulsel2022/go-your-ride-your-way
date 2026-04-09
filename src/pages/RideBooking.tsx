@@ -40,6 +40,10 @@ export default function RideBooking() {
   const [step, setStep] = useState<Step>("location");
   const [pickingField, setPickingField] = useState<"pickup" | "destination">("pickup");
 
+  const searchQuery = pickingField === "pickup" ? pickupName : destName;
+  const { results: geocodeResults, loading: geocodeLoading } = useGeocoding(searchQuery);
+  const displayResults = geocodeResults.length > 0 ? geocodeResults : defaultSuggestions;
+
   const nearbyDrivers = useMemo<[number, number][]>(() => {
     const base = pickupPos || [-6.2088, 106.8456];
     return Array.from({ length: 5 }, () => [
@@ -58,7 +62,7 @@ export default function RideBooking() {
     }
   }, [pickingField]);
 
-  const handleSuggestion = (s: typeof suggestions[0]) => {
+  const handleSuggestion = (s: GeocodingResult) => {
     if (pickingField === "pickup" || (!pickupPos && !destPos)) {
       setPickupName(s.name);
       setPickupPos(s.latlng);
